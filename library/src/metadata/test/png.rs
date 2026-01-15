@@ -215,7 +215,7 @@ fn delete_exif() {
 
 #[test]
 fn get_xmp() {
-	metadata!(XMP, "xmp:CreateDate" => "2025-01-20T18:30:00+00");
+	metadata!(XMP, "CreateDate" => "2025-01-20T18:30:00+00");
 }
 
 #[test]
@@ -225,7 +225,7 @@ fn delete_xmp() {
 
 #[test]
 fn get_xmp_compression() {
-	metadata!(XMP_COMPRESSION, "xmp:CreateDate" => "2025-01-20T18:30:00+00");
+	metadata!(XMP_COMPRESSION, "CreateDate" => "2025-01-20T18:30:00+00");
 }
 
 #[test]
@@ -235,7 +235,7 @@ fn delete_xmp_compression() {
 
 #[test]
 fn get_exif_xmp_text() {
-	metadata!(EXIF_XMP_TEXT, "xmp:CreateDate" => "2025-01-20T18:30:00+00", "Software" => "GIMP", "Description" => "Granite stairway in the Castle of Monsanto, Portugal");
+	metadata!(EXIF_XMP_TEXT, "CreateDate" => "2025-01-20T18:30:00+00", "Software" => "GIMP", "Description" => "Granite stairway in the Castle of Monsanto, Portugal");
 }
 
 #[test]

@@ -5,7 +5,6 @@ use std::{
 	num::ParseIntError,
 	str::Utf8Error,
 };
-use xmp_toolkit::XmpError;
 
 pub enum Error {
 	File,
@@ -54,14 +53,14 @@ impl From<ParseIntError> for Error {
 	}
 }
 
-impl From<Utf8Error> for Error {
-	fn from(_: Utf8Error) -> Self {
+impl From<quick_xml::Error> for Error {
+	fn from(_: quick_xml::Error) -> Self {
 		Error::Metadata
 	}
 }
 
-impl From<XmpError> for Error {
-	fn from(_: XmpError) -> Self {
+impl From<Utf8Error> for Error {
+	fn from(_: Utf8Error) -> Self {
 		Error::Metadata
 	}
 }

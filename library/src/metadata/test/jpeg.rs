@@ -158,7 +158,7 @@ fn delete_app1_exif() {
 
 #[test]
 fn get_app1_xmp() {
-	metadata!(APP1_XMP, "xmp:CreateDate" => "2025-01-20T18:30:00+00");
+	metadata!(APP1_XMP, "CreateDate" => "2025-01-20T18:30:00+00");
 }
 
 #[test]

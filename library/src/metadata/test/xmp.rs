@@ -1,6 +1,6 @@
 use crate::{Tag, metadata::xmp::get};
 
-macro_rules! compare_metadata {
+macro_rules! ok {
 	($source:expr) => {
 		let mut data = Vec::new();
         assert!(get($source, &mut data).is_ok());
@@ -15,22 +15,36 @@ macro_rules! compare_metadata {
 	};
 }
 
+macro_rules! error {
+	($data:expr) => {
+		let mut metadata = Vec::new();
+		assert!(get($data, &mut metadata).is_err());
+	};
+}
+
 #[test]
 fn nothing() {
+	let data = br#""#;
+	ok!(data);
+}
+
+#[test]
+fn no_entries() {
 	let data = br#"<x:xmpmeta xmlns:x="adobe:ns:meta/"></x:xmpmeta>"#;
-	compare_metadata!(data);
+	ok!(data);
 }
 
 #[test]
 fn no_xpacket() {
-	let data = br#"<x:xmpmeta xmlns:x="adobe:ns:meta/">
-    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-        <rdf:Description xmlns:xmp="http://ns.adobe.com/xap/1.0/">
-            <xmp:CreateDate>2025-01-20T18:30:00+00</xmp:CreateDate>
+	let data = br#"
+    <x:xmpmeta xmlns:x="adobe:ns:meta/">
+        <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+            <rdf:Description xmlns:xmp="http://ns.adobe.com/xap/1.0/">
+                <xmp:CreateDate>2025-01-20T18:30:00+00</xmp:CreateDate>
             </rdf:Description>
         </rdf:RDF>
     </x:xmpmeta>"#;
-	compare_metadata!(data, "xmp:CreateDate" => "2025-01-20T18:30:00+00");
+	ok!(data, "CreateDate" => "2025-01-20T18:30:00+00");
 }
 
 #[test]
@@ -43,7 +57,7 @@ fn basic_namespace_x1() {
             </rdf:Description>
         </rdf:RDF>
     </x:xmpmeta>"#;
-	compare_metadata!(data, "xmp:CreateDate" => "2025-01-20T18:30:00+00");
+	ok!(data, "CreateDate" => "2025-01-20T18:30:00+00");
 }
 
 #[test]
@@ -57,7 +71,7 @@ fn basic_namespace_x2() {
             </rdf:Description>
         </rdf:RDF>
     </x:xmpmeta>"#;
-	compare_metadata!(data, "xmp:CreateDate" => "2025-01-20T18:30:00+00", "xmp:CreatorTool" => "Photoshop");
+	ok!(data, "CreateDate" => "2025-01-20T18:30:00+00", "CreatorTool" => "Photoshop");
 }
 
 #[test]
@@ -70,7 +84,7 @@ fn mm_namespace_x1() {
             </rdf:Description>
         </rdf:RDF>
     </x:xmpmeta>"#;
-	compare_metadata!(data, "xmpMM:InstanceID" => "uuid:239c0e7a-a320-4a2b-abef-6f3cbc516f23");
+	ok!(data, "InstanceID" => "uuid:239c0e7a-a320-4a2b-abef-6f3cbc516f23");
 }
 
 #[test]
@@ -84,7 +98,7 @@ fn mm_namespace_x2() {
             </rdf:Description>
         </rdf:RDF>
     </x:xmpmeta>"#;
-	compare_metadata!(data, "xmpMM:InstanceID" => "uuid:239c0e7a-a320-4a2b-abef-6f3cbc516f23", "xmpMM:VersionID" => "1");
+	ok!(data, "InstanceID" => "uuid:239c0e7a-a320-4a2b-abef-6f3cbc516f23", "VersionID" => "1");
 }
 
 #[test]
@@ -97,7 +111,7 @@ fn dc_namespace_x1() {
             </rdf:Description>
         </rdf:RDF>
     </x:xmpmeta>"#;
-	compare_metadata!(data, "dc:date[1]" => "2025-01-20");
+	ok!(data, "date" => "2025-01-20");
 }
 
 #[test]
@@ -111,5 +125,35 @@ fn dc_namespace_x2() {
             </rdf:Description>
         </rdf:RDF>
     </x:xmpmeta>"#;
-	compare_metadata!(data, "dc:date[1]" => "2025-01-20", "dc:language[1]" => "en-US");
+	ok!(data, "date" => "2025-01-20", "language" => "en-US");
+}
+
+#[test]
+fn history() {
+	let data = br#"<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+    <x:xmpmeta xmlns:x="adobe:ns:meta/">
+        <rdf:RDF
+            xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+            xmlns:xmpMM="http://ns.adobe.com/xap/1.0/mm/"
+        >
+            <xmpMM:History>
+                <rdf:Seq>
+                    <rdf:li stEvt:action="saved" stEvt:when="2025-01-20T18:30:00"/>
+                </rdf:Seq>
+            </xmpMM:History>
+        </rdf:RDF>
+    </x:xmpmeta>"#;
+	ok!(data);
+}
+
+#[test]
+fn error_1() {
+	let data = br#"<x:xmpmeta xmlns:x="adobe:ns:meta/">"#;
+	error!(data);
+}
+
+#[test]
+fn error_2() {
+	let data = br#"<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">"#;
+	error!(data);
 }

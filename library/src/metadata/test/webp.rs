@@ -74,7 +74,7 @@ fn delete_exif() {
 
 #[test]
 fn get_xmp() {
-	metadata!(XMP, "xmp:CreateDate" => "2025-01-20T18:30:00+00");
+	metadata!(XMP, "CreateDate" => "2025-01-20T18:30:00+00");
 }
 
 #[test]
