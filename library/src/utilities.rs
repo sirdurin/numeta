@@ -86,3 +86,61 @@ pub mod stream {
 		create_function!(u32, from_le_bytes);
 	}
 }
+
+pub mod xml {
+	use crate::Error;
+	use quick_xml::{Reader, events::Event};
+	use std::io::BufRead;
+
+	pub fn parse_name(name: &[u8]) -> (String, String) {
+		let name = String::from_utf8_lossy(name).to_string();
+		let mut tokens = name.splitn(2, ':');
+		if let Some(value_1) = tokens.nth(0) {
+			if let Some(value_2) = tokens.nth(0) {
+				let name = value_2.to_string();
+				let namespace = value_1.to_string();
+				(name, namespace)
+			} else {
+				let name = value_1.to_string();
+				let namespace = "".to_string();
+				(name, namespace)
+			}
+		} else {
+			let name = "".to_string();
+			let namespace = "".to_string();
+			(name, namespace)
+		}
+	}
+
+	pub fn skip<R: BufRead>(source: &mut Reader<R>, name: &[u8]) -> Result<(), Error> {
+		let mut data = Vec::new();
+		loop {
+			match source.read_event_into(&mut data)? {
+				Event::End(end) if end.name().as_ref() == name => break,
+				Event::End(_) | Event::Eof => return Err(Error::Metadata),
+				Event::Start(start) => skip(source, start.name().as_ref())?,
+				_ => {}
+			}
+		}
+		Ok(())
+	}
+
+	pub fn parse_string<R: BufRead>(source: &mut Reader<R>, name: &[u8]) -> Result<String, Error> {
+		let mut data = Vec::new();
+		let mut string = None;
+		loop {
+			match source.read_event_into(&mut data)? {
+				Event::End(end) if end.name().as_ref() == name => break,
+				Event::End(_) | Event::Eof => return Err(Error::Metadata),
+				Event::Start(_) => {
+					// TODO
+				}
+				Event::Text(value) => {
+					string = Some(String::from_utf8_lossy(&value).trim_ascii().to_string());
+				}
+				_ => {}
+			}
+		}
+		Ok(string.unwrap_or("".to_string()))
+	}
+}

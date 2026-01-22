@@ -33,7 +33,7 @@ fn parse(
 			Event::End(end) if end.name() == name => break,
 			Event::End(_) | Event::Eof => return Err(Error::Metadata),
 			Event::Start(start) => parse(reader, start.name(), keep, metadata)?,
-			Event::Text(value) if value.as_ref().trim_ascii().is_empty() => {}
+			Event::Text(value) if value.trim_ascii().is_empty() => {}
 			Event::Text(value) => {
 				if keep {
 					let name = code.to_string();

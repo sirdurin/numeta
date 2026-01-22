@@ -1,3 +1,4 @@
+use quick_xml::events::attributes::AttrError;
 use std::{
 	error,
 	fmt::{Debug, Display, Formatter, Result},
@@ -5,6 +6,7 @@ use std::{
 	num::ParseIntError,
 	str::Utf8Error,
 };
+use zip::result::ZipError;
 
 pub enum Error {
 	Encryption,
@@ -39,6 +41,12 @@ impl error::Error for Error {
 	}
 }
 
+impl From<AttrError> for Error {
+	fn from(_: AttrError) -> Self {
+		Error::Metadata
+	}
+}
+
 impl From<io::Error> for Error {
 	fn from(error: io::Error) -> Self {
 		if error.kind() == ErrorKind::UnexpectedEof {
@@ -70,5 +78,11 @@ impl From<quick_xml::Error> for Error {
 impl From<Utf8Error> for Error {
 	fn from(_: Utf8Error) -> Self {
 		Error::Metadata
+	}
+}
+
+impl From<ZipError> for Error {
+	fn from(_: ZipError) -> Self {
+		Error::File
 	}
 }
