@@ -7,6 +7,7 @@ use std::{
 };
 
 pub enum Error {
+	Encryption,
 	File,
 	Io(io::Error),
 	Metadata,
@@ -21,6 +22,7 @@ impl Debug for Error {
 impl Display for Error {
 	fn fmt(&self, writer: &mut Formatter<'_>) -> Result {
 		match self {
+			Error::Encryption => write!(writer, "encrypted file"),
 			Error::File => write!(writer, "invalid file"),
 			Error::Io(error) => write!(writer, "{}", error),
 			Error::Metadata => write!(writer, "invalid metadata"),
@@ -44,6 +46,12 @@ impl From<io::Error> for Error {
 		} else {
 			Error::Io(error)
 		}
+	}
+}
+
+impl From<lopdf::Error> for Error {
+	fn from(_: lopdf::Error) -> Self {
+		Error::File
 	}
 }
 

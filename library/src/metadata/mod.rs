@@ -4,6 +4,7 @@ use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 pub mod exif;
 pub mod iptc;
 pub mod jpeg;
+pub mod pdf;
 pub mod png;
 #[cfg(test)]
 mod test;
@@ -13,6 +14,7 @@ pub mod xmp;
 #[derive(Debug)]
 pub enum Metadata {
 	Jpeg,
+	Pdf,
 	Png,
 	Webp,
 }
@@ -31,6 +33,11 @@ impl Metadata {
 		};
 		source.seek(SeekFrom::Start(0))?;
 		match data[0] {
+			b'%' => {
+				if &data[1..5] == b"PDF-" {
+					return Ok(Some(Metadata::Pdf));
+				}
+			}
 			b'R' => {
 				if &data[1..4] == b"IFF" {
 					return Ok(Some(Metadata::Webp));
@@ -54,6 +61,7 @@ impl Metadata {
 	pub fn get<R: Read + Seek>(&self, source: &mut R) -> Result<Vec<Tag>, Error> {
 		match self {
 			Metadata::Jpeg => jpeg::get(source),
+			Metadata::Pdf => pdf::get(source),
 			Metadata::Png => png::get(source),
 			Metadata::Webp => webp::get(source),
 		}
@@ -66,6 +74,7 @@ impl Metadata {
 	) -> Result<(), Error> {
 		match self {
 			Metadata::Jpeg => jpeg::delete(source, destination),
+			Metadata::Pdf => pdf::delete(source, destination),
 			Metadata::Png => png::delete(source, destination),
 			Metadata::Webp => webp::delete(source, destination),
 		}
