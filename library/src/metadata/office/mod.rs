@@ -6,6 +6,9 @@ use quick_xml::{events::Event, name::QName, reader::Reader, writer::Writer};
 use std::io::{BufReader, Read, Seek, Write};
 use zip::{CompressionMethod, DateTime, ZipArchive, ZipWriter, write::SimpleFileOptions};
 
+#[cfg(test)]
+mod test;
+
 pub fn get<R: Read + Seek>(source: &mut R) -> Result<Vec<Tag>, Error> {
 	let mut metadata = Vec::new();
 	let mut archive = ZipArchive::new(source)?;
@@ -69,7 +72,9 @@ fn parse_core_properties<R: Read>(
 			Event::Start(start) => {
 				let (name, _) = parse_name(start.name().as_ref());
 				let value = parse_string(source, start.name().as_ref())?;
-				metadata.push(Tag { name, value });
+				if !value.is_empty() {
+					metadata.push(Tag { name, value });
+				}
 			}
 			_ => {}
 		}
@@ -96,7 +101,9 @@ fn parse_properties<R: Read>(
 					}
 					_ => parse_string(source, start.name().as_ref())?,
 				};
-				metadata.push(Tag { name, value });
+				if !value.is_empty() {
+					metadata.push(Tag { name, value });
+				}
 			}
 			_ => {}
 		}

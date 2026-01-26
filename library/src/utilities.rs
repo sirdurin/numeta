@@ -88,7 +88,7 @@ pub mod stream {
 }
 
 pub mod xml {
-	use crate::Error;
+	use crate::{Error, UNKNOWN};
 	use quick_xml::{Reader, events::Event};
 	use std::io::BufRead;
 
@@ -127,20 +127,28 @@ pub mod xml {
 
 	pub fn parse_string<R: BufRead>(source: &mut Reader<R>, name: &[u8]) -> Result<String, Error> {
 		let mut data = Vec::new();
-		let mut string = None;
+		let mut value = None;
+		let mut unknown = false;
 		loop {
 			match source.read_event_into(&mut data)? {
 				Event::End(end) if end.name().as_ref() == name => break,
 				Event::End(_) | Event::Eof => return Err(Error::Metadata),
-				Event::Start(_) => {
-					// TODO
+				Event::Start(start) => {
+					unknown = true;
+					skip(source, start.name().as_ref())?;
 				}
-				Event::Text(value) => {
-					string = Some(String::from_utf8_lossy(&value).trim_ascii().to_string());
+				Event::Text(text) if value.is_none() => {
+					value = Some(String::from_utf8_lossy(&text).trim_ascii().to_string());
 				}
-				_ => {}
+				_ => {
+					unknown = true;
+				}
 			}
 		}
-		Ok(string.unwrap_or("".to_string()))
+		Ok(if unknown {
+			UNKNOWN.to_string()
+		} else {
+			value.unwrap_or("".to_string())
+		})
 	}
 }
