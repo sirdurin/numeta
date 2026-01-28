@@ -1,8 +1,8 @@
 use crate::{
-	Error, Tag, UNKNOWN,
-	utilities::xml::{parse_name, parse_string, skip},
+	Error, Tag,
+	xml::{Namespace, parse_name, parse_namespace, parse_start, skip},
 };
-use quick_xml::{events::Event, name::QName, reader::Reader, writer::Writer};
+use quick_xml::{events::Event, reader::Reader, writer::Writer};
 use std::io::{BufReader, Read, Seek, Write};
 use zip::{CompressionMethod, DateTime, ZipArchive, ZipWriter, write::SimpleFileOptions};
 
@@ -15,94 +15,101 @@ pub fn get<R: Read + Seek>(source: &mut R) -> Result<Vec<Tag>, Error> {
 	for i in 0..archive.len() {
 		let entry = archive.by_index(i)?;
 		match entry.name() {
-			"docProps/app.xml" => parse_application(BufReader::new(entry), &mut metadata)?,
-			"docProps/core.xml" => parse_core(BufReader::new(entry), &mut metadata)?,
+			"docProps/app.xml" => parse_application(entry, &mut metadata)?,
+			"docProps/core.xml" => parse_core(entry, &mut metadata)?,
 			_ => {}
 		}
 	}
 	Ok(metadata)
 }
 
-fn parse_application<R: Read>(source: BufReader<R>, metadata: &mut Vec<Tag>) -> Result<(), Error> {
+fn parse_application<R: Read>(source: R, metadata: &mut Vec<Tag>) -> Result<(), Error> {
 	let mut data = Vec::new();
-	let mut source = Reader::from_reader(source);
+	let mut source = Reader::from_reader(BufReader::new(source));
 	loop {
 		match source.read_event_into(&mut data)? {
 			Event::Eof => break,
 			Event::Start(start) => {
-				let (name, _) = parse_name(start.name().as_ref());
-				if name == "Properties" {
-					parse_properties(&mut source, start.name(), metadata)?;
-				}
-			}
-			_ => {}
-		}
-	}
-	Ok(())
-}
-
-fn parse_core<R: Read>(source: BufReader<R>, metadata: &mut Vec<Tag>) -> Result<(), Error> {
-	let mut data = Vec::new();
-	let mut source = Reader::from_reader(source);
-	loop {
-		match source.read_event_into(&mut data)? {
-			Event::Eof => break,
-			Event::Start(start) => {
-				let (name, _) = parse_name(start.name().as_ref());
-				if name == "coreProperties" {
-					parse_core_properties(&mut source, start.name(), metadata)?;
-				}
-			}
-			_ => {}
-		}
-	}
-	Ok(())
-}
-
-fn parse_core_properties<R: Read>(
-	source: &mut Reader<BufReader<R>>,
-	name: QName,
-	metadata: &mut Vec<Tag>,
-) -> Result<(), Error> {
-	loop {
-		let mut data = Vec::new();
-		match source.read_event_into(&mut data)? {
-			Event::End(end) if end.name() == name => break,
-			Event::End(_) | Event::Eof => return Err(Error::Metadata),
-			Event::Start(start) => {
-				let (name, _) = parse_name(start.name().as_ref());
-				let value = parse_string(source, start.name().as_ref())?;
-				if !value.is_empty() {
-					metadata.push(Tag { name, value });
-				}
-			}
-			_ => {}
-		}
-	}
-	Ok(())
-}
-
-fn parse_properties<R: Read>(
-	source: &mut Reader<BufReader<R>>,
-	name: QName,
-	metadata: &mut Vec<Tag>,
-) -> Result<(), Error> {
-	loop {
-		let mut data = Vec::new();
-		match source.read_event_into(&mut data)? {
-			Event::End(end) if end.name() == name => break,
-			Event::End(_) | Event::Eof => return Err(Error::Metadata),
-			Event::Start(start) => {
-				let (name, _) = parse_name(start.name().as_ref());
-				let value = match name.as_str() {
-					"DigSig" | "HeadingPairs" | "HLinks" | "Properties" | "TitlesOfParts" => {
-						skip(source, start.name().as_ref())?;
-						UNKNOWN.to_string()
+				let (name, prefix) = parse_name(start.name().as_ref());
+				let mut namespaces = [(Namespace::XProperties, "".to_string())];
+				for attribute in start.attributes() {
+					if let Some((space, code)) = parse_namespace(&attribute?) {
+						if space == b"http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" {
+							namespaces[0].1 = String::from_utf8_lossy(code.unwrap_or(b"")).to_string();
+						}
 					}
-					_ => parse_string(source, start.name().as_ref())?,
-				};
-				if !value.is_empty() {
-					metadata.push(Tag { name, value });
+				}
+				if !(name == "Properties" && prefix == namespaces[0].1) {
+					skip(&mut source, &start.name())?;
+					continue;
+				}
+				loop {
+					let mut data = Vec::new();
+					match source.read_event_into(&mut data)? {
+						Event::End(end) if end.name() == start.name() => break,
+						Event::End(_) | Event::Eof => return Err(Error::Metadata),
+						Event::Start(start) => {
+							let (name, value) = parse_start(&mut source, &start, &namespaces)?;
+							if !value.is_empty() {
+								metadata.push(Tag { name, value });
+							}
+						}
+						_ => {}
+					}
+				}
+			}
+			_ => {}
+		}
+	}
+	Ok(())
+}
+
+fn parse_core<R: Read>(source: R, metadata: &mut Vec<Tag>) -> Result<(), Error> {
+	let mut data = Vec::new();
+	let mut source = Reader::from_reader(BufReader::new(source));
+	loop {
+		match source.read_event_into(&mut data)? {
+			Event::Eof => break,
+			Event::Start(start) => {
+				let (name, prefix) = parse_name(start.name().as_ref());
+				let mut namespaces = [
+					(Namespace::CoreProperties, "".to_string()),
+					(Namespace::Dc, "".to_string()),
+					(Namespace::DcTerms, "".to_string()),
+				];
+				for attribute in start.attributes() {
+					if let Some((namespace, alias)) = parse_namespace(&attribute?) {
+						match namespace {
+							b"http://schemas.openxmlformats.org/package/2006/metadata/core-properties" => {
+								namespaces[0].1 = String::from_utf8_lossy(alias.unwrap_or(b"")).to_string();
+							}
+							b"http://purl.org/dc/elements/1.1/" => {
+								namespaces[1].1 = String::from_utf8_lossy(alias.unwrap_or(b"")).to_string();
+							}
+							b"http://purl.org/dc/terms/" => {
+								namespaces[2].1 = String::from_utf8_lossy(alias.unwrap_or(b"")).to_string();
+							}
+							_ => {}
+						}
+					}
+				}
+				if !(name == "coreProperties" && prefix == namespaces[0].1) {
+					skip(&mut source, &start.name())?;
+					continue;
+				}
+				loop {
+					let mut data = Vec::new();
+					match source.read_event_into(&mut data)? {
+						Event::End(end) if end.name() == start.name() => break,
+						Event::End(_) | Event::Eof => return Err(Error::Metadata),
+						Event::Start(start) => {
+							let (name, value) = parse_start(&mut source, &start, &namespaces)?;
+							if !value.is_empty() {
+								metadata.push(Tag { name, value });
+							}
+						}
+						_ => {}
+					}
 				}
 			}
 			_ => {}

@@ -3,6 +3,7 @@ use std::fmt::{Display, Formatter, Result};
 mod error;
 mod metadata;
 mod utilities;
+mod xml;
 
 pub use error::Error;
 pub use metadata::Metadata;

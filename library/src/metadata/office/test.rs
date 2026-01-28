@@ -38,6 +38,16 @@ fn application() {
 }
 
 #[test]
+fn application_prefix() {
+	let data = br#"
+	<xp:Properties xmlns:xp="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
+		<xp:Application>Microsoft Office Word</xp:Application>
+		<xp:AppVersion>16.0000</xp:AppVersion>
+	</xp:Properties>"#;
+	ok!(parse_application, data, "Application" => "Microsoft Office Word", "AppVersion" => "16.0000");
+}
+
+#[test]
 fn application_no_value() {
 	let data = br#"
 	<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
@@ -52,7 +62,7 @@ fn application_unknown_value_1() {
 	let data = br#"
 	<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
 		<Application>Microsoft Office Word</Application>
-		<AppVersion><Unknown>16.0000</Unknown></AppVersion>
+		<AppVersion><Data>16.0000</Data></AppVersion>
 	</Properties>"#;
 	ok!(parse_application, data, "Application" => "Microsoft Office Word", "AppVersion" => "Unknown");
 }
@@ -62,7 +72,7 @@ fn application_unknown_value_2() {
 	let data = br#"
 	<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
 		<Application>Microsoft Office Word</Application>
-		<AppVersion>16.0000<Unknown></Unknown></AppVersion>
+		<AppVersion>16.0000<Data></Data></AppVersion>
 	</Properties>"#;
 	ok!(parse_application, data, "Application" => "Microsoft Office Word", "AppVersion" => "Unknown");
 }
@@ -75,6 +85,16 @@ fn application_unknown_value_3() {
 		<AppVersion><?xml version="1.0" encoding="UTF-8" standalone="yes"?></AppVersion>
 	</Properties>"#;
 	ok!(parse_application, data, "Application" => "Microsoft Office Word", "AppVersion" => "Unknown");
+}
+
+#[test]
+fn application_unknown_property() {
+	let data = br#"
+	<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties">
+		<Application>Microsoft Office Word</Application>
+		<Data>????</Data>
+	</Properties>"#;
+	ok!(parse_application, data, "Application" => "Microsoft Office Word", "Data" => "????");
 }
 
 #[test]
@@ -97,6 +117,19 @@ fn core() {
 		<dc:creator>Mike Rotch</dc:creator>
 		<dc:language>en-US</dc:language>
 	</coreProperties>"#;
+	ok!(parse_core, data, "creator" => "Mike Rotch", "language" => "en-US");
+}
+
+#[test]
+fn core_prefix() {
+	let data = br#"
+	<cp:coreProperties
+		xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
+		xmlns:dc="http://purl.org/dc/elements/1.1/"
+	>
+		<dc:creator>Mike Rotch</dc:creator>
+		<dc:language>en-US</dc:language>
+	</cp:coreProperties>"#;
 	ok!(parse_core, data, "creator" => "Mike Rotch", "language" => "en-US");
 }
 
@@ -150,6 +183,19 @@ fn core_unknown_value_3() {
 		<dc:language>en-US</dc:language>
 	</coreProperties>"#;
 	ok!(parse_core, data, "creator" => "Unknown", "language" => "en-US");
+}
+
+#[test]
+fn core_unknown_property() {
+	let data = br#"
+	<coreProperties
+		xmlns="http://schemas.openxmlformats.org/package/2006/metadata/core-properties"
+		xmlns:dc="http://purl.org/dc/elements/1.1/"
+	>
+		<dc:creator>Mike Rotch</dc:creator>
+		<dc:data>????</dc:data>
+	</coreProperties>"#;
+	ok!(parse_core, data, "creator" => "Mike Rotch", "data" => "????");
 }
 
 #[test]
