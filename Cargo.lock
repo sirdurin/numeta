@@ -568,7 +568,7 @@ dependencies = [
 
 [[package]]
 name = "numeta"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "encoding_rs",
  "flate2",
@@ -579,7 +579,7 @@ dependencies = [
 
 [[package]]
 name = "numeta-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "fastrand",
  "numeta",

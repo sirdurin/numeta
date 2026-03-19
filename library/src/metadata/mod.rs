@@ -4,6 +4,7 @@ use std::io::{ErrorKind, Read, Seek, SeekFrom, Write};
 pub mod exif;
 pub mod iptc;
 pub mod jpeg;
+pub mod mp3;
 pub mod office;
 pub mod pdf;
 pub mod png;
@@ -16,6 +17,7 @@ pub mod xmp;
 pub enum Metadata {
 	Docx,
 	Jpeg,
+	Mp3,
 	Pdf,
 	Png,
 	Webp,
@@ -41,6 +43,11 @@ impl Metadata {
 					return Ok(Some(Metadata::Pdf));
 				}
 			}
+			b'I' => {
+				if &data[1..3] == b"D3" {
+					return Ok(Some(Metadata::Mp3));
+				}
+			}
 			b'R' => {
 				if &data[1..4] == b"IFF" {
 					return Ok(Some(Metadata::Webp));
@@ -63,6 +70,8 @@ impl Metadata {
 			0xFF => {
 				if data[1..3] == [0xD8, 0xFF] {
 					return Ok(Some(Metadata::Jpeg));
+				} else if [0xF2u8, 0xF3, 0xFA, 0xFB].contains(&data[1]) {
+					return Ok(Some(Metadata::Mp3));
 				}
 			}
 			_ => {}
@@ -74,6 +83,7 @@ impl Metadata {
 		match self {
 			Metadata::Docx => office::get(source),
 			Metadata::Jpeg => jpeg::get(source),
+			Metadata::Mp3 => mp3::get(source),
 			Metadata::Pdf => pdf::get(source),
 			Metadata::Png => png::get(source),
 			Metadata::Webp => webp::get(source),
@@ -89,6 +99,7 @@ impl Metadata {
 		match self {
 			Metadata::Docx => office::delete(source, destination, "word/"),
 			Metadata::Jpeg => jpeg::delete(source, destination),
+			Metadata::Mp3 => mp3::delete(source, destination),
 			Metadata::Pdf => pdf::delete(source, destination),
 			Metadata::Png => png::delete(source, destination),
 			Metadata::Webp => webp::delete(source, destination),

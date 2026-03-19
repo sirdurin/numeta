@@ -1,6 +1,7 @@
 mod exif;
 mod iptc;
 mod jpeg;
+mod mp3;
 mod pdf;
 mod png;
 mod webp;
